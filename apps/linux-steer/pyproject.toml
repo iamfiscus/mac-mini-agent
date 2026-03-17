@@ -1,0 +1,9 @@
+[project]
+name = "linux-steer"
+version = "0.1.0"
+description = "Linux X11 GUI automation CLI for AI agents"
+requires-python = ">=3.10"
+dependencies = [
+    "click>=8.0",
+    "pillow>=10.0",
+]

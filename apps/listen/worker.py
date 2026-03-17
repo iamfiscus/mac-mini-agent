@@ -1,10 +1,13 @@
-"""Job worker — runs a Claude Code agent in a visible Terminal window.
+"""Job worker — runs a coding agent in a terminal via tmux.
 
-Creates a headed tmux session, sends the claude command with sentinel
-markers, polls for completion, then updates the job YAML.
+Creates a tmux session (headed or headless), sends the agent command with
+sentinel markers, polls for completion, then updates the job YAML.
+
+Supports Claude Code, OpenCode, and Pi as agent backends.
 """
 
 import os
+import platform
 import re
 import subprocess
 import sys
@@ -15,8 +18,28 @@ from pathlib import Path
 
 import yaml
 
+# Add parent so we can import shared modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from shared.x11 import ensure_display
+
 SENTINEL_PREFIX = "__JOBDONE_"
 POLL_INTERVAL = 2.0
+
+# Agent command builders: (system_prompt_file, prompt_file) -> shell command string
+AGENT_COMMANDS = {
+    "claude": lambda sys_file, prompt_file: (
+        f'claude -p --dangerously-skip-permissions'
+        f' --append-system-prompt "$(cat {sys_file})"'
+        f' "$(cat {prompt_file})"'
+    ),
+    "opencode": lambda sys_file, prompt_file: (
+        f'opencode run "$(cat {sys_file})\n\n$(cat {prompt_file})"'
+    ),
+    "pi": lambda sys_file, prompt_file: (
+        f'pi --print --append-system-prompt "$(cat {sys_file})"'
+        f' --tools read,bash,edit,write "$(cat {prompt_file})"'
+    ),
+}
 
 
 def _tmux(*args: str, check: bool = True) -> subprocess.CompletedProcess[str]:
@@ -30,14 +53,34 @@ def _session_exists(name: str) -> bool:
 
 
 def _open_terminal(session_name: str, cwd: str) -> None:
-    """Open a new Terminal.app window with a tmux session attached."""
-    tmux_cmd = f"cd '{cwd}' && tmux new-session -A -s {session_name}"
-    escaped = tmux_cmd.replace("\\", "\\\\").replace('"', '\\"')
-    subprocess.run(
-        ["osascript", "-e", f'tell application "Terminal" to do script "{escaped}"'],
-        capture_output=True,
-        text=True,
-    )
+    """Open a tmux session — headed (visible window) or headless.
+
+    macOS: opens Terminal.app via AppleScript.
+    Linux: opens gnome-terminal if HEADED=1, otherwise detached tmux.
+    """
+    if platform.system() == "Darwin":
+        tmux_cmd = f"cd '{cwd}' && tmux new-session -A -s {session_name}"
+        escaped = tmux_cmd.replace("\\", "\\\\").replace('"', '\\"')
+        subprocess.run(
+            ["osascript", "-e", f'tell application "Terminal" to do script "{escaped}"'],
+            capture_output=True,
+            text=True,
+        )
+    elif os.environ.get("HEADED", "0") == "1":
+        ensure_display()
+        tmux_cmd = f"cd '{cwd}' && tmux new-session -A -s {session_name}"
+        subprocess.run(
+            ["gnome-terminal", "--", "bash", "-c", tmux_cmd],
+            capture_output=True,
+            text=True,
+        )
+    else:
+        subprocess.run(
+            ["tmux", "new-session", "-d", "-s", session_name, "-c", cwd],
+            capture_output=True,
+            text=True,
+        )
+
     # Wait for session to appear
     deadline = time.monotonic() + 5.0
     while time.monotonic() < deadline:
@@ -73,11 +116,16 @@ def _wait_for_sentinel(session: str, token: str) -> int:
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: worker.py <job_id> <prompt>")
+        print("Usage: worker.py <job_id> <prompt> [agent]")
         sys.exit(1)
 
     job_id = sys.argv[1]
     prompt = sys.argv[2]
+    agent = sys.argv[3] if len(sys.argv) > 3 else "claude"
+
+    if agent not in AGENT_COMMANDS:
+        print(f"Unknown agent: {agent}. Supported: {', '.join(AGENT_COMMANDS)}")
+        sys.exit(1)
 
     jobs_dir = Path(__file__).parent / "jobs"
     job_file = jobs_dir / f"{job_id}.yaml"
@@ -103,15 +151,11 @@ def main():
     session_name = f"job-{job_id}"
     token = uuid.uuid4().hex[:8]
 
-    # Build the claude command — read prompt from file to avoid truncation
-    claude_cmd = (
-        f"claude --dangerously-skip-permissions"
-        f' --append-system-prompt "$(cat {sys_prompt_tmp})"'
-        f' "$(cat {prompt_tmp})"'
-    )
+    # Build the agent command from the registry
+    agent_cmd = AGENT_COMMANDS[agent](sys_prompt_tmp, prompt_tmp)
 
     # Wrap with sentinel: <cmd> ; echo "__JOBDONE_<token>:$?"
-    wrapped = f'{claude_cmd} ; echo "{SENTINEL_PREFIX}{token}:$?"'
+    wrapped = f'{agent_cmd} ; echo "{SENTINEL_PREFIX}{token}:$?"'
 
     start_time = time.time()
 

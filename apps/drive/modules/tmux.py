@@ -77,25 +77,32 @@ class SessionInfo:
 
 
 def open_terminal_window(command: str) -> None:
-    """Open a new Terminal.app window and run a command in it.
+    """Open a new terminal window and run a command in it.
 
-    Uses AppleScript on macOS to tell Terminal.app to execute a script.
-    The new window inherits the current working directory.
+    macOS: uses AppleScript to tell Terminal.app to execute.
+    Linux: uses gnome-terminal if HEADED=1, otherwise silently skips.
     """
-    if platform.system() != "Darwin":
-        return  # silently skip on non-macOS
     cwd = os.getcwd()
     shell_command = f"cd '{cwd}' && {command}"
-    escaped = shell_command.replace("\\", "\\\\").replace('"', '\\"')
-    subprocess.run(
-        [
-            "osascript",
-            "-e",
-            f'tell application "Terminal" to do script "{escaped}"',
-        ],
-        capture_output=True,
-        text=True,
-    )
+
+    if platform.system() == "Darwin":
+        escaped = shell_command.replace("\\", "\\\\").replace('"', '\\"')
+        subprocess.run(
+            [
+                "osascript",
+                "-e",
+                f'tell application "Terminal" to do script "{escaped}"',
+            ],
+            capture_output=True,
+            text=True,
+        )
+    elif platform.system() == "Linux" and os.environ.get("HEADED", "0") == "1":
+        subprocess.run(
+            ["gnome-terminal", "--", "bash", "-c", shell_command],
+            capture_output=True,
+            text=True,
+        )
+    # else: headless Linux — skip (caller should use detached tmux)
 
 
 def create_session(

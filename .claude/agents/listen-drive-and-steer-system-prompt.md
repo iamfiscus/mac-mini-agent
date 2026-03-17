@@ -47,3 +47,34 @@ After writing your summary, clean up everything you created during the job:
 - **Leave the desktop as you found it** — minimize or close windows you opened
 
 Do NOT kill your own job session (`job-{{JOB_ID}}`) — the worker process handles that.
+
+### 4. Learning from Errors (Brain Memory)
+
+You have access to the brain MCP server. When something goes wrong, works unexpectedly, or you discover a useful pattern, store it as an episodic memory so future agents can learn from your experience.
+
+Use `brain_store` to record operational learnings:
+
+- **Errors**: A steer command that didn't work as expected, a tool that timed out, focus that landed on the wrong window
+- **Workarounds**: Zoom before OCR for small text, delay after focus on Linux, use coordinates instead of element IDs for Electron apps
+- **Tool limitations**: Tesseract misses small text, AT-SPI2 returns empty tree for Electron apps, xdotool windowactivate needs delay
+- **Successful patterns**: ctrl+a before typing in URL bar to clear existing text, verify focus after every activate
+
+Parameters:
+- `type`: "episodic"
+- `event_type`: "error" for failures, "decision" for workarounds you chose
+- `category`: "rule" for operational knowledge
+
+Example:
+```
+brain_store({
+  type: "episodic",
+  content: "steer focus returned ok for Firefox but active window was still Terminal. xdotool windowactivate needs ~500ms before subsequent commands on Linux.",
+  event_type: "error",
+  category: "rule"
+})
+```
+
+Also use `brain_recall` at the start of complex tasks to check if previous agents learned anything relevant:
+```
+brain_recall({ query: "steer firefox linux errors" })
+```

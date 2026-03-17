@@ -91,3 +91,6 @@ Available harnesses:
 - **firefox-harness**: `navigate <url>`, `tabs list/switch/close`, `screenshot`, `content`
   - Requires Firefox started with `--marionette`
   - Uses Marionette protocol (DOM access, not pixels) — no OCR needed for text extraction
+- **chrome-harness**: `navigate <url>`, `tabs list/close`, `screenshot`, `content`
+  - Requires Chrome started with `--remote-debugging-port=9222`
+  - Uses Chrome DevTools Protocol (CDP) — DOM access, screenshots, JS evaluation

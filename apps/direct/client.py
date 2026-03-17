@@ -122,9 +122,12 @@ def route_job(prompt: str, requires: list[str], agent: str = "claude") -> dict:
     Queries brain for online agents, filters by required capabilities,
     picks the first match, and sends the job to its Listen URL.
     """
-    result = _mcp_call_sync("brain_who", {})
+    try:
+        result = _mcp_call_sync("brain_who", {})
+    except Exception as e:
+        raise RuntimeError(f"Brain unreachable at {_brain_mcp_url()}: {e}")
     if not result or "content" not in result:
-        raise RuntimeError("Brain unreachable or brain_who returned no data")
+        raise RuntimeError("brain_who returned no data")
 
     # Parse the brain_who response — expect content with agent list
     content = result.get("content", [])

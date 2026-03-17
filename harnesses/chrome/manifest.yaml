@@ -1,0 +1,17 @@
+name: chrome
+version: 0.1.0
+app: Chrome / Chromium
+platform: all
+backend: cdp  # Chrome DevTools Protocol, port 9222
+commands:
+  - navigate: "Navigate to a URL"
+  - tabs: "List, switch, or close tabs"
+  - screenshot: "Capture page screenshot"
+  - content: "Extract page text content from DOM"
+capabilities_added: ["chrome-harness"]
+setup: |
+  Chrome/Chromium must be started with remote debugging:
+    google-chrome --remote-debugging-port=9222
+  Or headless:
+    google-chrome --headless --remote-debugging-port=9222
+  Default port: 9222

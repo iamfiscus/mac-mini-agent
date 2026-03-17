@@ -1,0 +1,10 @@
+[project]
+name = "chrome-harness"
+version = "0.1.0"
+description = "Chrome/Chromium browser harness via DevTools Protocol"
+requires-python = ">=3.11"
+dependencies = [
+    "click>=8.1",
+    "httpx",
+    "websockets",
+]

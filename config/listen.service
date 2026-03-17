@@ -4,14 +4,10 @@ After=network.target graphical.target
 
 [Service]
 Type=simple
-User=jd
 WorkingDirectory=/home/jd/mac-mini-agent
-Environment=DISPLAY=:1
-Environment=XAUTHORITY=/run/user/1000/gdm/Xauthority
-Environment=PATH=/home/jd/.local/bin:/usr/local/bin:/usr/bin:/bin
-ExecStart=/home/jd/.local/bin/uv run python apps/listen/main.py
+ExecStart=/home/jd/mac-mini-agent/config/start-listen.sh
 Restart=on-failure
 RestartSec=5
 
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

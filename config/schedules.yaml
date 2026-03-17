@@ -1,0 +1,33 @@
+# Scheduled jobs — installed via `just crontab-install`
+# Each entry becomes a crontab line on the target device.
+#
+# Fields:
+#   name:   human-readable label (used in comments)
+#   cron:   standard 5-field crontab expression
+#   prompt: inline prompt text (or prompt_file for a spec file)
+#   url:    Listen server URL to send the job to
+#   agent:  claude | opencode | pi (default: claude)
+
+schedules:
+  - name: hn-morning-scan
+    cron: "0 8 * * *"
+    prompt: >-
+      Open Firefox, navigate to news.ycombinator.com, OCR the top 10 headlines,
+      and write a report to /tmp/hn-daily.md. Store a summary in the brain as
+      an episodic memory.
+    url: http://localhost:7600
+    agent: claude
+
+  - name: device-health
+    cron: "*/30 * * * *"
+    prompt: >-
+      Run steer apps list and drive session list. Report any stale sessions
+      or unusual processes. Store findings in the brain as an episodic memory.
+    url: http://localhost:7600
+    agent: claude
+
+  - name: self-improve
+    cron: "0 22 * * *"
+    prompt_file: specs/self-improve.md
+    url: http://localhost:7600
+    agent: claude

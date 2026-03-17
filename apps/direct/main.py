@@ -61,5 +61,20 @@ def stop(url: str, job_id: str):
     click.echo(f"Job {result['job_id']} {result['status']}")
 
 
+@cli.command()
+@click.argument("prompt")
+@click.option("--requires", "-r", multiple=True, help="Required capabilities (e.g. gui-x11, terminal)")
+@click.option("--agent", default="claude", help="Agent backend: claude, opencode, pi")
+def route(prompt: str, requires: tuple[str, ...], agent: str):
+    """Route a job to the best available device via brain."""
+    caps = list(requires) if requires else ["terminal"]
+    try:
+        result = client.route_job(prompt, caps, agent)
+        click.echo(f"Routed → {result['job_id']}")
+    except RuntimeError as e:
+        click.echo(f"Routing failed: {e}", err=True)
+        raise SystemExit(1)
+
+
 if __name__ == "__main__":
     cli()

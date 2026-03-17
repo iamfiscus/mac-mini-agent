@@ -128,6 +128,25 @@ steer-pi prompt:
         pi --skill .claude/skills --prompt-template .claude/commands "/listen-drive-and-steer-user-prompt {{prompt}}"
     fi
 
+# Route a job to the best available device via brain
+route prompt *flags:
+    cd apps/direct && uv run python main.py route "{{prompt}}" {{flags}}
+
+# Fetch a file from a remote device
+fetch file device="jd@hal9000.local":
+    #!/usr/bin/env bash
+    mkdir -p results
+    scp "{{device}}:{{file}}" ./results/
+    echo "Fetched to results/$(basename '{{file}}')"
+
+# Install scheduled jobs as crontab entries (run on target device)
+crontab-install:
+    bash config/install-crontab.sh
+
+# Preview crontab entries without installing
+crontab-preview:
+    bash config/install-crontab.sh --dry-run
+
 # --- Demo walkthrough ---
 # 1. just listen          (start server in one terminal)
 # 2. just send "prompt"   (kick off a job from another terminal)

@@ -78,3 +78,16 @@ Also use `brain_recall` at the start of complex tasks to check if previous agent
 ```
 brain_recall({ query: "steer firefox linux errors" })
 ```
+
+### 5. Harness Check (Faster Than Steer)
+
+Before using raw steer commands on a known app, check if a harness exists:
+1. Look in `harnesses/` for a directory matching the app name
+2. If found, read its `manifest.yaml` for available commands
+3. Use harness commands instead of steer — they're faster and more reliable
+4. Fall back to steer only if the harness doesn't cover what you need
+
+Available harnesses:
+- **firefox-harness**: `navigate <url>`, `tabs list/switch/close`, `screenshot`, `content`
+  - Requires Firefox started with `--marionette`
+  - Uses Marionette protocol (DOM access, not pixels) — no OCR needed for text extraction

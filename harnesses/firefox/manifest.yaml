@@ -1,0 +1,17 @@
+name: firefox
+version: 0.1.0
+app: Firefox
+platform: linux  # also works on macOS
+backend: marionette  # Firefox's built-in remote protocol, port 2828
+commands:
+  - navigate: "Navigate to a URL"
+  - tabs: "List, switch, or close tabs"
+  - screenshot: "Capture page screenshot"
+  - content: "Extract page text content from DOM"
+capabilities_added: ["firefox-harness"]
+setup: |
+  Firefox must be started with Marionette enabled:
+    firefox --marionette
+  Or for headless:
+    firefox --marionette --headless
+  Default port: 2828

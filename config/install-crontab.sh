@@ -9,7 +9,7 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 SCHEDULES="$REPO_DIR/config/schedules.yaml"
-JUST="$(command -v just || echo "$REPO_DIR/just")"
+SEND="$REPO_DIR/config/send-job.sh"
 DRY_RUN="${1:-}"
 
 if [ ! -f "$SCHEDULES" ]; then
@@ -17,10 +17,9 @@ if [ ! -f "$SCHEDULES" ]; then
     exit 1
 fi
 
-# Parse YAML with a simple awk script (no python dependency for crontab install)
-# Outputs: cron|name|url|agent|prompt_or_file
+# Parse YAML → cron|name|url|agent|prompt_or_@file
 entries=$(python3 -c "
-import yaml, sys
+import yaml
 with open('$SCHEDULES') as f:
     data = yaml.safe_load(f)
 for s in data.get('schedules', []):
@@ -29,24 +28,18 @@ for s in data.get('schedules', []):
     url = s.get('url', 'http://localhost:7600')
     agent = s.get('agent', 'claude')
     if 'prompt_file' in s:
-        print(f'{cron}|{name}|{url}|{agent}|file:{s[\"prompt_file\"]}')
+        print(f'{cron}|{name}|{url}|{agent}|@$REPO_DIR/{s[\"prompt_file\"]}')
     else:
-        print(f'{cron}|{name}|{url}|{agent}|{s[\"prompt\"]}')
+        # Replace pipes in prompt to avoid IFS issues
+        prompt = s['prompt'].replace('|', ' ')
+        print(f'{cron}|{name}|{url}|{agent}|{prompt}')
 ")
 
-# Build new crontab
 MARKER="# mini-agent:"
 new_entries=""
 
 while IFS='|' read -r cron name url agent prompt; do
-    if [[ "$prompt" == file:* ]]; then
-        spec_file="${prompt#file:}"
-        cmd="cd $REPO_DIR && $JUST sendf $spec_file $url"
-    else
-        # Escape single quotes in prompt
-        escaped=$(echo "$prompt" | sed "s/'/'\\\\''/g")
-        cmd="cd $REPO_DIR && curl -s -X POST $url/job -H 'Content-Type: application/json' -d '{\"prompt\": \"$escaped\", \"agent\": \"$agent\"}'"
-    fi
+    cmd="$SEND '$url' '$agent' '$prompt'"
     new_entries+="$cron $cmd $MARKER $name"$'\n'
 done <<< "$entries"
 
